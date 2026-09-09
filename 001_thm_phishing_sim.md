@@ -386,7 +386,7 @@ If additional telemetry becomes available, the following investigations should b
 Search for network requests to the phishing URL or destination IP around the time the email was delivered.
 
 ```spl
-[INSERT SPL QUERY HERE]
+index=* "hrconnex.thm" (url=* OR uri=* OR dest=* OR dest_domain=*)
 ```
 
 ### DNS Logs
@@ -394,24 +394,17 @@ Search for network requests to the phishing URL or destination IP around the tim
 Search for DNS queries associated with the phishing domain.
 
 ```spl
-[INSERT SPL QUERY HERE]
+index=* "hrconnex.thm" (url=* OR uri=* OR dest=* OR dest_domain=* OR src_ip=*)
 ```
 
-### Endpoint Telemetry
 
-Search for browser and network activity originating from the recipient's endpoint.
-
-```spl
-[INSERT SPL QUERY HERE]
-```
 
 ### Authentication Logs
 
 Search for suspicious authentication activity following delivery of the phishing email.
 
-```spl
-[INSERT SPL QUERY HERE]
-```
+index=* sourcetype="WinEventLog:Security" (EventCode=4624 OR EventCode=4625)
+
 
 ---
 
@@ -449,28 +442,16 @@ An investigation can reveal weaknesses in detection logic and provide opportunit
 
 The following screenshots should be added to the final GitHub version of this investigation.
 
-### Initial Alert
-
-`[INSERT SCREENSHOT HERE]`
-
-### Email Event Search
-
-`[INSERT SCREENSHOT HERE]`
-
-### Link / Click Investigation
-
-`[INSERT SCREENSHOT HERE]`
-
-### Correlated Sender and Recipient Events
-
-`[INSERT SCREENSHOT HERE]`
-
-### Additional Relevant Splunk Results
-
-`[INSERT SCREENSHOT HERE]`
-
----
-
+<img src="screenshots/phishingpng.1.png" alt="Initial phishing alert" width="900">
+<img src="screenshots/phishingpng.002.png"" alt="Initial phishing alert" width="900">
+<img src="screenshots/phishingpng.003.png"" alt="Initial phishing alert" width="900">
+<img src="screenshots/phishingpng.004.png"" alt="Initial phishing alert" width="900">
+<img src="screenshots/phishingpng.005.png"" alt="Initial phishing alert" width="900">
+<img src="screenshots/phishingpng.006.png"" alt="Initial phishing alert" width="900">
+<img src="screenshots/phishingpng.007.png"" alt="Initial phishing alert" width="900">
+<img src="screenshots/phishingpng.008.png"" alt="Initial phishing alert" width="900">
+<img src="screenshots/phishingpng.009.png"" alt="Initial phishing alert" width="900">
+<img src="screenshots/phishingpng.010.png"" alt="Initial phishing alert" width="900">
 # Conclusion
 
 This investigation examined a phishing alert generated during a controlled phishing simulation.
