@@ -94,7 +94,7 @@ The alert was therefore broken down into several investigation questions:
 
 This approach allowed the investigation to distinguish between confirmed activity and activity that was only suspected.
 
-<img src="screenshots/phishingpng010.png"" alt="Initial phishing alert" width="900">
+<img src="screenshots/phishingpng010.png" alt="Initial phishing alert" width="900">
 
 ---
 
@@ -193,7 +193,7 @@ The email activity itself was confirmed.
 
 However, this finding only establishes that phishing-related email activity occurred. It does not establish that the recipient interacted with the message.
 
-<img src="screenshots/phishingpng008.png"" alt="Initial phishing alert" width="900">
+<img src="screenshots/phishingpng008.png" alt="Initial phishing alert" width="900">
 
 ---
 
