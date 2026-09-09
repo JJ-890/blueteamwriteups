@@ -442,16 +442,16 @@ An investigation can reveal weaknesses in detection logic and provide opportunit
 
 The following screenshots should be added to the final GitHub version of this investigation.
 
-<img src="screenshots/phishingpng.1.png" alt="Initial phishing alert" width="900">
-<img src="screenshots/phishingpng.002.png"" alt="Initial phishing alert" width="900">
-<img src="screenshots/phishingpng.003.png"" alt="Initial phishing alert" width="900">
+<img src="screenshots/phishingpng1.png" alt="Initial phishing alert" width="900">
+<img src="screenshots/phishingpng002.png"" alt="Initial phishing alert" width="900">
+<img src="screenshots/phishingpng003.png"" alt="Initial phishing alert" width="900">
 <img src="screenshots/phishingpng.004.png"" alt="Initial phishing alert" width="900">
-<img src="screenshots/phishingpng.005.png"" alt="Initial phishing alert" width="900">
-<img src="screenshots/phishingpng.006.png"" alt="Initial phishing alert" width="900">
-<img src="screenshots/phishingpng.007.png"" alt="Initial phishing alert" width="900">
-<img src="screenshots/phishingpng.008.png"" alt="Initial phishing alert" width="900">
-<img src="screenshots/phishingpng.009.png"" alt="Initial phishing alert" width="900">
-<img src="screenshots/phishingpng.010.png"" alt="Initial phishing alert" width="900">
+<img src="screenshots/phishingpng005.png"" alt="Initial phishing alert" width="900">
+<img src="screenshots/phishingpng006.png"" alt="Initial phishing alert" width="900">
+<img src="screenshots/phishingpng007.png"" alt="Initial phishing alert" width="900">
+<img src="screenshots/phishingpng008.png"" alt="Initial phishing alert" width="900">
+<img src="screenshots/phishingpng009.png"" alt="Initial phishing alert" width="900">
+<img src="screenshots/phishingpng010.png"" alt="Initial phishing alert" width="900">
 # Conclusion
 
 This investigation examined a phishing alert generated during a controlled phishing simulation.
