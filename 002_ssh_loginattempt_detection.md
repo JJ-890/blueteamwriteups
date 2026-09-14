@@ -107,7 +107,7 @@ This was an important first checkpoint because it separated **syntax/programming
 
 ### Screenshot — Original `ssh_monitor.py`
 
-<img src="screenshots/ssh_orginalss.png" alt="Initial ssh screen" width="900">
+<img src="screenshots/realorginalssh.png.png" alt="Initial ssh screen" width="900">
 
 *Initial execution of **`ssh_monitor.py`**, confirming that the script was syntactically valid and could successfully run on the Linux instance.*
 
