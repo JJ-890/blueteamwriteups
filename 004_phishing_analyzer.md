@@ -152,7 +152,7 @@ The architecture established during this phase is intentionally simple:
 This architecture provides a clean separation between **ingestion** and the analysis components that will be added in subsequent phases.
 
 ---
-hase 1 Output
+Phase 1 Output
 
 The following screenshot shows an example of the analyzer's output after successfully processing an .eml file.
 
