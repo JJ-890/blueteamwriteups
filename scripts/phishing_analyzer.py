@@ -2,7 +2,41 @@ from email import policy
 from email.parser import BytesParser
 from pathlib import Path
 import sys
+from email.utils import parseaddr
 
+
+def extract_address_info (header_value):
+    """ Extract email address and domain from an email header"""
+    if not header_value:
+        return { "address:None, 
+                "domain": None
+                }
+                , address = parseaddr(header_value)
+    if not address or "@" not in address:
+        return {
+                "address": address if address else None,
+                "domain": None
+        }
+    domain = address.split("@", 1)[1].lower()
+
+    return {
+            "address":address,
+            "domain":domain
+    }
+
+def extract_sender_information(message):
+    """Extract sender-related information from the email."""
+    from_info = extract_address_info(message.get("From"))
+
+    reply_to_info = extract_address_info(message.get("Reply-To"))
+
+    return_path_info = extract_address_info(message.get("Return-Path"))
+
+    return {
+        "from": from_info,
+        "reply_to": reply_to_info,
+        "return_path":return_path_info
+    }
 
 def parse_email(file_path):
     """Parse an .eml file and return the email message object."""
@@ -78,8 +112,21 @@ def main():
 
     message = parse_email(file_path)
 
-    display_headers(message)
+    sender_information = extract_sender_information(message)
 
+    print("\n========== NORMALIZED SENDER DATA ==========\n")
+
+    print("From:")
+    print(f"  Address: {sender_information['from']['address']}")
+    print(f"  Domain:  {sender_information['from']['domain']}")
+
+    print("\nReply-To:")
+    print(f"  Address: {sender_information['reply_to']['address']}")
+    print(f"  Domain:  {sender_information['reply_to']['domain']}")
+
+    print("\nReturn-Path:")
+    print(f"  Address: {sender_information['return_path']['address']}")
+    print(f"  Domain:  {sender_information['return_path']['domain']}")
 
 if __name__ == "__main__":
     main()
