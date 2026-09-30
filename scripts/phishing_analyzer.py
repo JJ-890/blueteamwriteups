@@ -1,27 +1,38 @@
-from email import policy
+from email import message, policy
 from email.parser import BytesParser
 from pathlib import Path
 import sys
 from email.utils import parseaddr
+import re
+def parse_email(file_path):
+    """Parse an .eml file and return the email message object."""
+    with open(file_path, "rb") as email_file:
+        message = BytesParser(policy=policy.default).parse(email_file)
 
+    return message
 
-def extract_address_info (header_value):
-    """ Extract email address and domain from an email header"""
+def extract_address_info(header_value):
+    """Extract email address and domain from an email header."""
+
     if not header_value:
-        return { "address:None, 
-                "domain": None
-                }
-                , address = parseaddr(header_value)
+        return {
+            "address": None,
+            "domain": None
+        }
+
+    _, address = parseaddr(header_value)
+
     if not address or "@" not in address:
         return {
-                "address": address if address else None,
-                "domain": None
+            "address": address if address else None,
+            "domain": None
         }
+
     domain = address.split("@", 1)[1].lower()
 
     return {
-            "address":address,
-            "domain":domain
+        "address": address,
+        "domain": domain
     }
 
 def extract_sender_information(message):
@@ -38,12 +49,100 @@ def extract_sender_information(message):
         "return_path":return_path_info
     }
 
-def parse_email(file_path):
-    """Parse an .eml file and return the email message object."""
-    with open(file_path, "rb") as email_file:
-        message = BytesParser(policy=policy.default).parse(email_file)
+def extract_spf_information(message):
+    """Extracting SPF information from eml headers"""
+    authentication_results=message.get("Authentication-Results")
+    if  not authentication_results:
+        return {
+                "result":None, 
+                "domain": None
+        }
+    spf_match= re.search( 
+                    r"\bspf=(pass|fail|softfail|neutral|none|temperror|permerror)\b",
+                    authentication_results,
+                    re.IGNORECASE
+    )
+    domain_match = re.search(
+                    r"\bsmtp\.mailfrom=([^\s;]+)",
+                        authentication_results,
+                        re.IGNORECASE
+    )
+    return {
+    "result": spf_match.group(1).lower() if spf_match else None,
+    "domain": domain_match.group(1).lower() if domain_match else None 
+        }
+def  extract_dkim_information(message):
+    """Extracting DKIM information from the eml file """
+    authentication_results = message.get("Authentication-Results")
+    if not authentication_results:
+        return {
+                "result": None, 
+                "domain":None
+        }
+    dkim_match = re.search(
+        r"\bdkim=(pass|fail|neutral|none|temperror|permerror)\b",
+        authentication_results,
+        re.IGNORECASE
+    )
+    domain_match = re.search(
+                    r"\bheader\.d=([^\s;]+)",
+                    authentication_results,
+                    re.IGNORECASE
+    )
 
-    return message
+    
+    return {
+            "result":dkim_match.group(1).lower() if dkim_match else None,
+            "domain": domain_match.group(1).lower() if domain_match else None
+    }
+
+def extract_dmarc_information(message):
+    """Extract DMARC authentication information from the email."""
+    authentication_results = message.get("Authentication-Results")
+
+    if not authentication_results:
+        return {
+
+            "result": None,
+            "domain": None,
+            "action": None
+        }
+    dmarc_match = re.search(
+    r"\bdmarc=(pass|fail|neutral|none|temperror|permerror)\b",
+    authentication_results,
+    re.IGNORECASE
+    )
+    domain_match = re.search(
+    r"\bheader\.from=([^\s;]+)",
+    authentication_results,
+    re.IGNORECASE
+    )
+    action_match = re.search(
+    r"\baction=([^\s;]+)",
+    authentication_results,
+    re.IGNORECASE
+    )
+    return {
+    
+                "result": dmarc_match.group(1).lower() if dmarc_match else None,
+                "domain": domain_match.group(1).lower() if domain_match else None,
+                "action": action_match.group(1).lower() if action_match else None
+            }
+def extract_compauth_information(message):
+    """Extract composite authentication information from the email."""
+
+    authentication_results = message.get("Authentication-Results")
+
+    if not authentication_results:
+        return {
+            "result": None,
+            "reason": None
+        }
+
+    return {
+        "result": None,
+        "reason": None
+    }
 
 
 def display_headers(message):
@@ -112,10 +211,30 @@ def main():
 
     message = parse_email(file_path)
 
+    dkim_information = extract_dkim_information(message)
+    dmarc_information = extract_dmarc_information(message)
+
     sender_information = extract_sender_information(message)
+    spf_information = extract_spf_information(message)
+    compauth_information = extract_compauth_information(message)
+
+    print("--------------------------------------------------")
+    print("\n[DEBUG COMPAUTH]")
+    print(compauth_information)
+    print("--------------------------------------------------")
+    
+    print("--------------------------------------------------")
+    print("\n========== DMARC DATA ==========")
+    print(f"Result: {dmarc_information['result']}")
+    print(f"Domain: {dmarc_information['domain']}")
+    print(f"Action: {dmarc_information['action']}")
+    print("\n========== DKIM DATA ==========")
+    print(f"Result: {dkim_information['result']}")
+    print(f"Domain: {dkim_information['domain']}")
+
 
     print("\n========== NORMALIZED SENDER DATA ==========\n")
-
+    
     print("From:")
     print(f"  Address: {sender_information['from']['address']}")
     print(f"  Domain:  {sender_information['from']['domain']}")
@@ -127,6 +246,10 @@ def main():
     print("\nReturn-Path:")
     print(f"  Address: {sender_information['return_path']['address']}")
     print(f"  Domain:  {sender_information['return_path']['domain']}")
+    print("\n========== SPF DATA ==========")
+
+    print(f"Result: {spf_information['result']}")
+    print(f"Domain: {spf_information['domain']}")
 
 if __name__ == "__main__":
     main()
