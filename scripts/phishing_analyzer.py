@@ -138,10 +138,20 @@ def extract_compauth_information(message):
             "result": None,
             "reason": None
         }
+    compauth_match = re.search(
+    r"\bcompauth=(pass|fail|none)\b",
+        authentication_results,
+        re.IGNORECASE
+        )
+    reason_match = re.search(
+    r"\breason=([^\s;]+)",
+    authentication_results,
+    re.IGNORECASE
+    )
 
     return {
-        "result": None,
-        "reason": None
+        "result": compauth_match.group(1).lower() if compauth_match else None,
+        "reason": reason_match.group(1).lower() if reason_match else None
     }
 
 
@@ -221,9 +231,10 @@ def main():
     print("--------------------------------------------------")
     print("\n[DEBUG COMPAUTH]")
     print(compauth_information)
-    print("--------------------------------------------------")
-    
-    print("--------------------------------------------------")
+    print("\n============COMPAUTH DATA========")
+
+    print(f"Result: {compauth_information['result']}")
+    print(f"Reason: {compauth_information['reason']}")
     print("\n========== DMARC DATA ==========")
     print(f"Result: {dmarc_information['result']}")
     print(f"Domain: {dmarc_information['domain']}")
