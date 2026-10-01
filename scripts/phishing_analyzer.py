@@ -170,6 +170,34 @@ def extract_compauth_information(message):
         "reason": reason_match.group(1).lower() if reason_match else None
     }
 
+def  correlate_spf_with_from(sender_information, spf_information):
+    """Compare the SPF domain with the From domain"""
+    from_domain =  sender_information["from"]["domain"]
+    spf_domain =spf_information["domain"]
+
+    if not from_domain or not spf_domain:
+        return None 
+    return from_domain == spf_domain
+def correlate_dkim_with_from(sender_information, dkim_information):
+    """Compare the DKIM signing domain with the From domain."""
+
+    from_domain = sender_information["from"]["domain"]
+    dkim_domain = dkim_information["domain"]
+
+    if not from_domain or not dkim_domain:
+        return None
+
+    return from_domain == dkim_domain
+def correlate_dmarc_with_from(sender_information, dmarc_information):
+    """Compare the DMARC header.from domain with the From domain."""
+
+    from_domain = sender_information["from"]["domain"]
+    dmarc_domain = dmarc_information["domain"]
+
+    if not from_domain or not dmarc_domain:
+        return None
+
+    return from_domain == dmarc_domain
 
 def display_headers(message):
     """Display headers relevant to an initial SOC investigation."""
@@ -244,6 +272,18 @@ def main():
     spf_information = extract_spf_information(message)
     compauth_information = extract_compauth_information(message)
 
+    spf_from_match = correlate_spf_with_from(
+    sender_information,
+    spf_information
+    )
+    dkim_from_match = correlate_dkim_with_from(
+    sender_information,
+    dkim_information
+    )
+    dmarc_from_match = correlate_dmarc_with_from(
+    sender_information,
+    dmarc_information)
+
     print("--------------------------------------------------")
     print("\n[DEBUG COMPAUTH]")
     print(compauth_information)
@@ -279,6 +319,18 @@ def main():
     print(f"Result: {spf_information['result']}")
     print(f"Mail From: {spf_information['mail_from']}")
     print(f"Domain: {spf_information['domain']}")
+    print("\n========== SPF / FROM CORRELATION ==========")
+    print(f"From Domain: {sender_information['from']['domain']}")
+    print(f"SPF Domain: {spf_information['domain']}")
+    print(f"Domain Match: {spf_from_match}")
+    print("\n========== DKIM / FROM CORRELATION ==========")
+    print(f"From Domain: {sender_information['from']['domain']}")
+    print(f"DKIM Domain: {dkim_information['domain']}")
+    print(f"Domain Match: {dkim_from_match}")
+    print("\n========== DMARC / FROM CORRELATION ==========")
+    print(f"From Domain: {sender_information['from']['domain']}")
+    print(f"DMARC Domain: {dmarc_information['domain']}")
+    print(f"Domain Match: {dmarc_from_match}")
 
 if __name__ == "__main__":
     main()
