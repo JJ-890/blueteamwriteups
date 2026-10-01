@@ -62,15 +62,27 @@ def extract_spf_information(message):
                     authentication_results,
                     re.IGNORECASE
     )
-    domain_match = re.search(
+    mail_from_match = re.search(
                     r"\bsmtp\.mailfrom=([^\s;]+)",
                         authentication_results,
                         re.IGNORECASE
     )
+    mail_from = (
+        mail_from_match.group(1).lower()
+        if mail_from_match
+        else None
+    )
+
+    if mail_from and "@" in mail_from:
+        domain = mail_from.split("@", 1)[1]
+    else:
+        domain = mail_from
+
     return {
-    "result": spf_match.group(1).lower() if spf_match else None,
-    "domain": domain_match.group(1).lower() if domain_match else None 
-        }
+        "result": spf_match.group(1).lower() if spf_match else None,
+        "mail_from": mail_from,
+        "domain": domain
+    }
 def  extract_dkim_information(message):
     """Extracting DKIM information from the eml file """
     authentication_results = message.get("Authentication-Results")
@@ -89,11 +101,15 @@ def  extract_dkim_information(message):
                     authentication_results,
                     re.IGNORECASE
     )
-
-    
+    identity_match = re.search(
+        r"\bheader\.i=([^\s;]+)",
+        authentication_results,
+        re.IGNORECASE
+    )
     return {
             "result":dkim_match.group(1).lower() if dkim_match else None,
-            "domain": domain_match.group(1).lower() if domain_match else None
+            "domain": domain_match.group(1).lower() if domain_match else None,
+            "identity": identity_match.group(1).lower() if identity_match else None
     }
 
 def extract_dmarc_information(message):
@@ -242,6 +258,7 @@ def main():
     print("\n========== DKIM DATA ==========")
     print(f"Result: {dkim_information['result']}")
     print(f"Domain: {dkim_information['domain']}")
+    print(f"Identity: {dkim_information['identity']}")
 
 
     print("\n========== NORMALIZED SENDER DATA ==========\n")
@@ -260,6 +277,7 @@ def main():
     print("\n========== SPF DATA ==========")
 
     print(f"Result: {spf_information['result']}")
+    print(f"Mail From: {spf_information['mail_from']}")
     print(f"Domain: {spf_information['domain']}")
 
 if __name__ == "__main__":
