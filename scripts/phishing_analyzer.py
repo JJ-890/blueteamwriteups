@@ -246,7 +246,16 @@ def display_headers(message):
             print(f"\n  [{number}] {signature}")
     else:
         print("  Not present")
+def correlate_reply_to_with_from(sender_information):
+    """Compare the Reply-To domain with the From domain."""
 
+    from_domain = sender_information["from"]["domain"]
+    reply_to_domain = sender_information["reply_to"]["domain"]
+
+    if not from_domain or not reply_to_domain:
+        return None
+
+    return from_domain == reply_to_domain
 
 def main():
     if len(sys.argv) != 2:
@@ -283,6 +292,9 @@ def main():
     dmarc_from_match = correlate_dmarc_with_from(
     sender_information,
     dmarc_information)
+    reply_to_from_match = correlate_reply_to_with_from(
+    sender_information
+    )
 
     print("--------------------------------------------------")
     print("\n[DEBUG COMPAUTH]")
@@ -331,6 +343,10 @@ def main():
     print(f"From Domain: {sender_information['from']['domain']}")
     print(f"DMARC Domain: {dmarc_information['domain']}")
     print(f"Domain Match: {dmarc_from_match}")
+    print("\n========== FROM / REPLY-TO CORRELATION ==========")
+    print(f"From Domain: {sender_information['from']['domain']}")
+    print(f"Reply-To Domain: {sender_information['reply_to']['domain']}")
+    print(f"Domain Match: {reply_to_from_match}")
 
 if __name__ == "__main__":
     main()
