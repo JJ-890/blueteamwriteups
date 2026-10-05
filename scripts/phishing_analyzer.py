@@ -256,7 +256,264 @@ def correlate_reply_to_with_from(sender_information):
         return None
 
     return from_domain == reply_to_domain
+def correlate_return_path_with_from(sender_information):
+    """Compare the Return-Path domain with the From domain."""
 
+    from_domain = sender_information["from"]["domain"]
+    return_path_domain = sender_information["return_path"]["domain"]
+
+    if not from_domain or not return_path_domain:
+        return None
+
+    return from_domain == return_path_domain
+def correlate_reply_to_with_return_path(sender_information):
+    """Compare the Reply-To domain with the Return-Path domain."""
+
+    reply_to_domain = sender_information["reply_to"]["domain"]
+    return_path_domain = sender_information["return_path"]["domain"]
+
+    if not reply_to_domain or not return_path_domain:
+        return None
+
+    return reply_to_domain == return_path_domain
+def assess_authentication_alignment(
+    spf_information,
+    dkim_information,
+    dmarc_information,
+    spf_from_match,
+    dkim_from_match,
+    dmarc_from_match
+    ):
+    """Assess authentication results alongside sender-domain alignment."""
+
+    return {
+        "spf": {
+            "result": spf_information["result"],
+            "from_alignment": spf_from_match
+        },
+        "dkim": {
+            "result": dkim_information["result"],
+            "from_alignment": dkim_from_match
+        },
+        "dmarc": {
+            "result": dmarc_information["result"],
+            "from_alignment": dmarc_from_match
+        }
+    }
+def correlate_spf_with_return_path(spf_information, sender_information):
+    """Compare the SPF domain with the Return-Path domain."""
+
+    spf_domain = spf_information["domain"]
+    return_path_domain = sender_information["return_path"]["domain"]
+
+    if not spf_domain or not return_path_domain:
+        return None
+
+    return spf_domain == return_path_domain
+def assess_dmarc_alignment(
+    spf_information,
+    dkim_information,
+    spf_from_match,
+    dkim_from_match):
+
+    """Assess whether SPF or DKIM provides From-domain alignment."""
+
+    return {
+        "spf_aligned": (
+            spf_information["result"] == "pass"
+            and spf_from_match is True
+        ),
+        "dkim_aligned": (
+            dkim_information["result"] == "pass"
+            and dkim_from_match is True
+        )
+    }
+def correlate_spf_with_reply_to(spf_information, sender_information):
+    """Compare the SPF domain with the Reply-To domain."""
+
+    spf_domain = spf_information["domain"]
+    reply_to_domain = sender_information["reply_to"]["domain"]
+
+    if not spf_domain or not reply_to_domain:
+        return None
+
+    return spf_domain == reply_to_domain
+def build_sender_identity_assessment(
+    sender_information,
+    spf_information,
+    dkim_information,
+    dmarc_information,
+    spf_return_path_match,
+    dkim_from_match,
+    dmarc_from_match):
+    """Build a descriptive assessment of authentication and sender identities."""
+
+    return {
+        "spf": {
+            "mail_from": spf_information["mail_from"],
+            "return_path": sender_information["return_path"]["address"],
+            "return_path_match": spf_return_path_match
+        },
+        "dkim": {
+            "domain": dkim_information["domain"],
+            "from_domain": sender_information["from"]["domain"],
+            "from_match": dkim_from_match
+        },
+        "dmarc": {
+            "domain": dmarc_information["domain"],
+            "from_domain": sender_information["from"]["domain"],
+            "from_match": dmarc_from_match
+        }
+        }
+def build_header_context_assessment(
+    sender_information,
+    spf_information,
+    dkim_information,
+    dmarc_information,
+    spf_from_match,
+    dkim_from_match,
+    dmarc_from_match,
+    reply_to_from_match,
+    return_path_from_match,
+    reply_to_return_path_match,
+    spf_return_path_match,
+    spf_reply_to_match):
+    """Build a consolidated assessment of email header and authentication context."""
+
+    return {
+        "sender_identities": {
+            "from": sender_information["from"],
+            "reply_to": sender_information["reply_to"],
+            "return_path": sender_information["return_path"]
+        },
+        "authentication": {
+            "spf": {
+                "result": spf_information["result"],
+                "domain": spf_information["domain"],
+                "from_match": spf_from_match,
+                "return_path_match": spf_return_path_match,
+                "reply_to_match": spf_reply_to_match
+            },
+            "dkim": {
+                "result": dkim_information["result"],
+                "domain": dkim_information["domain"],
+                "from_match": dkim_from_match
+            },
+            "dmarc": {
+                "result": dmarc_information["result"],
+                "domain": dmarc_information["domain"],
+                "from_match": dmarc_from_match
+            }
+        },
+        "header_relationships": {
+            "from_reply_to": reply_to_from_match,
+            "from_return_path": return_path_from_match,
+            "reply_to_return_path": reply_to_return_path_match
+        }
+    }
+def build_analyst_assessment(
+    sender_information,
+    spf_information,
+    dkim_information,
+    dmarc_information,
+    spf_from_match,
+    dkim_from_match,
+    dmarc_from_match,
+    reply_to_from_match,
+    return_path_from_match,
+    reply_to_return_path_match,
+    spf_return_path_match,
+    spf_reply_to_match
+    ):
+    """Build a descriptive SOC analyst assessment from correlated evidence."""
+
+    findings = []
+
+    # SPF assessment
+    if spf_information["result"] == "pass":
+        findings.append("SPF authentication passed.")
+    elif spf_information["result"] is not None:
+        findings.append(
+            f"SPF authentication returned "
+            f"{spf_information['result']}."
+        )
+
+    # SPF / From relationship
+    if spf_from_match is False:
+        findings.append(
+            "The SPF domain does not match the visible From domain."
+        )
+
+    # DKIM assessment
+    if dkim_information["result"] == "pass":
+        findings.append("DKIM authentication passed.")
+    elif dkim_information["result"] is not None:
+        findings.append(
+            f"DKIM authentication returned "
+            f"{dkim_information['result']}."
+        )
+
+    # DKIM / From relationship
+    if dkim_from_match is False:
+        findings.append(
+            "The DKIM signing domain does not match the visible From domain."
+        )
+
+    # DMARC assessment
+    if dmarc_information["result"] == "pass":
+        findings.append("DMARC authentication passed.")
+    elif dmarc_information["result"] is not None:
+        findings.append(
+            f"DMARC authentication returned "
+            f"{dmarc_information['result']}."
+        )
+
+    # Reply-To relationship
+    if reply_to_from_match is False:
+        findings.append(
+            "The Reply-To domain differs from the visible From domain."
+        )
+
+    # Return-Path relationship
+    if return_path_from_match is False:
+        findings.append(
+            "The Return-Path domain differs from the visible From domain."
+        )
+
+    # Reply-To / Return-Path relationship
+    if reply_to_return_path_match is False:
+        findings.append(
+            "The Reply-To domain differs from the Return-Path domain."
+        )
+
+    # SPF / Return-Path relationship
+    if spf_return_path_match is True:
+        findings.append(
+            "The SPF domain corresponds to the Return-Path domain."
+        )
+
+    # SPF / Reply-To relationship
+    if spf_reply_to_match is False:
+        findings.append(
+            "The SPF domain differs from the Reply-To domain."
+        )
+
+    # Overall assessment
+    if findings:
+        assessment = (
+            "Multiple authentication and sender-identity relationships "
+            "were identified for analyst review."
+        )
+    else:
+        assessment = (
+            "No notable authentication or sender-identity relationships "
+            "were identified from the available evidence."
+        )
+
+    return {
+        "assessment": assessment,
+        "findings": findings
+    }
 def main():
     if len(sys.argv) != 2:
         print("Usage: python phishing_analyzer.py <email.eml>")
@@ -295,10 +552,79 @@ def main():
     reply_to_from_match = correlate_reply_to_with_from(
     sender_information
     )
+    return_path_from_match = correlate_return_path_with_from(
+    sender_information
+    )
+    reply_to_return_path_match = correlate_reply_to_with_return_path(
+    sender_information
+    )
+    spf_return_path_match = correlate_spf_with_return_path(
+    spf_information,
+    sender_information
+    )
+    dmarc_alignment = assess_dmarc_alignment(
+    spf_information,
+    dkim_information,
+    spf_from_match,
+    dkim_from_match
+    )
+    spf_reply_to_match = correlate_spf_with_reply_to(
+    spf_information,
+    sender_information
+    )
+    spf_return_path_match = correlate_spf_with_return_path(
+    spf_information,
+    sender_information
+    )
 
-    print("--------------------------------------------------")
-    print("\n[DEBUG COMPAUTH]")
-    print(compauth_information)
+    dkim_from_match = correlate_dkim_with_from(
+    sender_information,
+    dkim_information
+    )
+
+    dmarc_from_match = correlate_dmarc_with_from(
+    sender_information,
+    dmarc_information
+    )
+
+    sender_identity_assessment = build_sender_identity_assessment(
+    sender_information,
+    spf_information,
+    dkim_information,
+    dmarc_information,
+    spf_return_path_match,
+    dkim_from_match,
+    dmarc_from_match
+    )
+    header_context_assessment = build_header_context_assessment(
+    sender_information,
+    spf_information,
+    dkim_information,
+    dmarc_information,
+    spf_from_match,
+    dkim_from_match,
+    dmarc_from_match,
+    reply_to_from_match,
+    return_path_from_match,
+    reply_to_return_path_match,
+    spf_return_path_match,
+    spf_reply_to_match
+    )
+    analyst_assessment = build_analyst_assessment(
+    sender_information,
+    spf_information,
+    dkim_information,
+    dmarc_information,
+    spf_from_match,
+    dkim_from_match,
+    dmarc_from_match,
+    reply_to_from_match,
+    return_path_from_match,
+    reply_to_return_path_match,
+    spf_return_path_match,
+    spf_reply_to_match)
+
+
     print("\n============COMPAUTH DATA========")
 
     print(f"Result: {compauth_information['result']}")
@@ -347,6 +673,101 @@ def main():
     print(f"From Domain: {sender_information['from']['domain']}")
     print(f"Reply-To Domain: {sender_information['reply_to']['domain']}")
     print(f"Domain Match: {reply_to_from_match}")
+    print("\n========== FROM / RETURN-PATH CORRELATION ==========")
+    print(f"From Domain: {sender_information['from']['domain']}")
+    print(f"Return-Path Domain: {sender_information['return_path']['domain']}")
+    print(f"Domain Match: {return_path_from_match}")
+    print("\n========== REPLY-TO / RETURN-PATH CORRELATION ==========")
+    print(f"Reply-To Domain: {sender_information['reply_to']['domain']}")
+    print(f"Return-Path Domain: {sender_information['return_path']['domain']}")
+    print(f"Domain Match: {reply_to_return_path_match}")
+    print("\n========== SPF / RETURN-PATH CORRELATION ==========")
+    print(f"SPF Domain: {spf_information['domain']}")
+    print(f"Return-Path Domain: {sender_information['return_path']['domain']}")
+    print(f"Domain Match: {spf_return_path_match}")
+    print("\n========== DMARC ALIGNMENT ASSESSMENT ==========")
+    print(f"SPF Aligned: {dmarc_alignment['spf_aligned']}")
+    print(f"DKIM Aligned: {dmarc_alignment['dkim_aligned']}")
+    print("\n========== SPF / REPLY-TO CORRELATION ==========")
+    print(f"SPF Domain: {spf_information['domain']}")
+    print(f"Reply-To Domain: {sender_information['reply_to']['domain']}")
+    print(f"Domain Match: {spf_reply_to_match}")
+    print("\n========== AUTHENTICATION / SENDER IDENTITY ASSESSMENT ==========")
+
+    print("\nSPF:")
+    print(f"  Mail From: {sender_identity_assessment['spf']['mail_from']}")
+    print(f"  Return-Path: {sender_identity_assessment['spf']['return_path']}")
+    print(
+    f"  Match: "
+    f"{sender_identity_assessment['spf']['return_path_match']}"
+    )
+
+    print("\nDKIM:")
+    print(f"  Domain: {sender_identity_assessment['dkim']['domain']}")
+    print(f"  From Domain: {sender_identity_assessment['dkim']['from_domain']}")
+    print(
+    f"  From Match: "
+    f"{sender_identity_assessment['dkim']['from_match']}"
+    )
+
+    print("\nDMARC:")
+    print(f"  Domain: {sender_identity_assessment['dmarc']['domain']}")
+    print(f"  From Domain: {sender_identity_assessment['dmarc']['from_domain']}")
+    print(
+    f"  From Match: "
+    f"{sender_identity_assessment['dmarc']['from_match']}"
+    )
+    print("\n========== HEADER / CONTEXT ASSESSMENT ==========")
+
+    print("\nSender Identities:")
+    print(
+    f"  From: "
+    f"{header_context_assessment['sender_identities']['from']['address']}"
+    )
+    print(
+    f"  Reply-To: "
+    f"{header_context_assessment['sender_identities']['reply_to']['address']}"
+    )
+    print(
+    f"Return-Path:" f"{header_context_assessment['sender_identities']['return_path']['address']}"
+    )
+
+    print("\nAuthentication:")
+    print(
+    f"  SPF: "
+    f"{header_context_assessment['authentication']['spf']['result']}"
+    )
+    print(
+    f"  DKIM: "
+    f"{header_context_assessment['authentication']['dkim']['result']}"
+    )
+    print(
+    f"  DMARC: "
+    f"{header_context_assessment['authentication']['dmarc']['result']}"
+    )
+
+    print("\nHeader Relationships:")
+    print(
+    f"  From ↔ Reply-To: "
+    f"{header_context_assessment['header_relationships']['from_reply_to']}"
+    )
+    print(
+    f"  From ↔ Return-Path: "
+    f"{header_context_assessment['header_relationships']['from_return_path']}"
+    )
+    print(
+    f"  Reply-To ↔ Return-Path: "
+    f"{header_context_assessment['header_relationships']['reply_to_return_path']}"
+    )
+    print("\n========== SOC ANALYST ASSESSMENT ==========")
+
+    print(f"\nAssessment:")
+    print(f"  {analyst_assessment['assessment']}")
+
+    print("\nFindings:")
+
+    for finding in analyst_assessment["findings"]:
+        print(f"  - {finding}")
 
 if __name__ == "__main__":
     main()
