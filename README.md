@@ -53,48 +53,223 @@ As additional investigations are completed, writeups will be numbered chronologi
 
 ## 🔬 Current Investigations
 
-### 001 — Phishing Alert Investigation
+# Phishing Email Analyzer
 
-**Environment:** Controlled phishing simulation
-**SIEM:** Splunk
-**Investigation Type:** Phishing alert triage
-**Final Assessment:** Likely false positive
-**Confidence:** Moderate
+A Python command-line tool that parses `.eml` files and reports **sender-identity and email-authentication evidence** to support SOC Analyst L1 triage.
 
-This investigation examines a simulated phishing alert and follows the activity from:
+It does not label an email "phishing" or "safe." It extracts the identities an email presents (`From`, `Reply-To`, `Return-Path`), reads the SPF, DKIM, DMARC, and compauth results from the `Authentication-Results` header, compares the domains against each other, and prints evidence-based findings for an analyst to review.
 
-```text
-Phishing Email
-      ↓
-Email Delivery
-      ↓
-User Interaction
-      ↓
-URL Access
-      ↓
-Potential Compromise
-```
+> **Core idea: authentication does not equal legitimacy.**
+> SPF or DKIM can pass for a domain that has no relationship to the visible `From` address. The tool reports the *result* and the *alignment* separately so that gap is visible.
 
-The investigation focuses on determining which stages of the attack chain can actually be supported by available telemetry.
-
-Key areas investigated:
-
-* Phishing email delivery
-* Sender and recipient identification
-* Duplicate email events
-* URL investigation
-* User interaction
-* Link-click evidence
-* Event correlation
-* URL reputation
-* Detection logic
-* Telemetry limitations
-* MITRE ATT&CK mapping
-* False-positive assessment
-
-➡️ **[Read the full investigation](./001_thm_phishing_sim.md)**
+**Status:** Phase 2 complete. Phase 1 covered basic `.eml` parsing; Phase 2 added sender normalization, authentication parsing, domain correlation, and findings.
 
 ---
+
+## Usage
+
+Requires Python 3 and the standard library only (`email`, `re`, `pathlib`, `sys`).
+
+```bash
+python phishing_analyzer.py path/to/sample.eml
+```
+
+The script exits with an error if no file is given, the file does not exist, or the extension is not `.eml`. Output is printed to the console.
+
+---
+
+## How It Works
+
+```text
+.eml file
+   |
+   v
+parse_email()                        (email.parser, policy.default)
+   |
+   +--> extract_sender_information()      From / Reply-To / Return-Path
+   |
+   +--> extract_spf_information()         Authentication-Results
+   +--> extract_dkim_information()        Authentication-Results
+   +--> extract_dmarc_information()       Authentication-Results
+   +--> extract_compauth_information()    Authentication-Results
+   |
+   v
+correlate_*()                        domain comparisons (True / False / None)
+   |
+   v
+assess_dmarc_alignment()             SPF/DKIM pass AND domain match
+   |
+   v
+build_*_assessment()                 consolidated views + findings
+   |
+   v
+console report
+```
+
+### Sender normalization
+
+`extract_address_info()` uses `parseaddr` to split each header into an **address** and a lowercase **domain**. Missing or malformed values return `None` instead of raising an error.
+
+| Header | Why it matters |
+|---|---|
+| `From` | The visible sender the recipient sees |
+| `Reply-To` | Where replies actually go |
+| `Return-Path` | The envelope sender; the identity SPF is evaluated against |
+
+### Authentication parsing
+
+Values are extracted with regular expressions from the `Authentication-Results` header:
+
+| Mechanism | Fields captured |
+|---|---|
+| SPF | result, `smtp.mailfrom`, mail-from domain |
+| DKIM | result, `header.d` (signing domain), `header.i` (identity) |
+| DMARC | result, `header.from` domain, `action` |
+| compauth | result, `reason` (Microsoft composite authentication) |
+
+### Domain correlation
+
+Each correlation compares two domains and returns `True`, `False`, or `None` (when either value is missing). `None` is intentionally distinct from `False`: missing data is not treated as a mismatch.
+
+* From ↔ Reply-To
+* From ↔ Return-Path
+* Reply-To ↔ Return-Path
+* SPF ↔ From
+* SPF ↔ Return-Path
+* SPF ↔ Reply-To
+* DKIM ↔ From
+* DMARC `header.from` ↔ From
+
+### Result vs. alignment
+
+`assess_dmarc_alignment()` reports whether SPF and DKIM each provide alignment with the `From` domain. A mechanism counts as aligned only when the result is `pass` **and** its domain matches `From`. This is why a message can show `SPF: pass` and still report `SPF Aligned: False`.
+
+### Findings
+
+`build_analyst_assessment()` turns the correlations into plain-language observations, such as:
+
+* SPF / DKIM / DMARC result statements (`pass` or the returned value)
+* SPF or DKIM domain does not match the visible `From` domain
+* `Reply-To` or `Return-Path` differs from `From`
+* `Reply-To` differs from `Return-Path`
+* SPF domain corresponds to / differs from `Return-Path` and `Reply-To`
+
+Findings are worded as observations, not verdicts. The analyzer flags relationships worth investigating; the analyst decides what they mean. Note that compauth and the DMARC alignment check are printed in the report but are not currently turned into findings.
+
+---
+
+## Example Output
+
+Illustrative, abridged output for a sanitized sample using reserved example domains. Section order matches the script.
+
+```text
+============COMPAUTH DATA========
+Result: None
+Reason: None
+
+========== DMARC DATA ==========
+Result: none
+Domain: example.com
+Action: None
+
+========== DKIM DATA ==========
+Result: pass
+Domain: example-bulk.net
+Identity: None
+
+========== NORMALIZED SENDER DATA ==========
+From:
+  Address: noreply@example.com
+  Domain:  example.com
+Reply-To:
+  Address: help@example-support.net
+  Domain:  example-support.net
+Return-Path:
+  Address: bounce@mailer.example-bulk.net
+  Domain:  mailer.example-bulk.net
+
+========== SPF DATA ==========
+Result: pass
+Mail From: bounce@mailer.example-bulk.net
+Domain: mailer.example-bulk.net
+
+========== SPF / FROM CORRELATION ==========
+From Domain: example.com
+SPF Domain: mailer.example-bulk.net
+Domain Match: False
+
+[... DKIM, DMARC, Reply-To, Return-Path correlations ...]
+
+========== DMARC ALIGNMENT ASSESSMENT ==========
+SPF Aligned: False
+DKIM Aligned: False
+
+[... authentication / sender identity and header context assessments ...]
+
+========== SOC ANALYST ASSESSMENT ==========
+
+Assessment:
+  Multiple authentication and sender-identity relationships
+  were identified for analyst review.
+
+Findings:
+  - SPF authentication passed.
+  - The SPF domain does not match the visible From domain.
+  - DKIM authentication passed.
+  - The DKIM signing domain does not match the visible From domain.
+  - DMARC authentication returned none.
+  - The Reply-To domain differs from the visible From domain.
+  - The Return-Path domain differs from the visible From domain.
+  - The Reply-To domain differs from the Return-Path domain.
+  - The SPF domain corresponds to the Return-Path domain.
+  - The SPF domain differs from the Reply-To domain.
+```
+
+**Reading this as an analyst:** SPF and DKIM both pass, but for a bulk-mailing domain rather than `example.com`, and replies are routed to a third domain. That is not proof of malice (legitimate third-party senders look similar), but it justifies checking who operates those domains and whether `example.com` authorizes that sender.
+
+---
+
+## Testing
+
+The analyzer was run against controlled `.eml` samples covering combinations of:
+
+* SPF result and SPF-domain alignment
+* DKIM result and signing-domain alignment
+* DMARC result
+* Matching and mismatching `Reply-To` and `Return-Path`
+
+The goal was to confirm that authentication results and alignment are reported independently, and that a `pass` is never treated as proof of legitimacy.
+
+---
+
+## Limitations and Known Issues
+
+* **Exact domain matching.** Alignment compares full domains. DMARC's relaxed alignment treats `mail.example.com` and `example.com` as aligned; this tool will report a mismatch. Organizational-domain matching is planned.
+* **Single `Authentication-Results` header.** Only the first header is read, and each regex returns the first match. Messages with multiple headers or multiple DKIM signatures are not fully represented.
+* **Trusts the header as written.** It does not re-verify SPF, DKIM, or DMARC. The header is only reliable if added by your own receiving infrastructure.
+* **Messages with no `Authentication-Results` header are not handled gracefully yet** (missing keys cause an error during output). Fix in progress.
+* **Header-only analysis.** No URL, attachment, or body analysis; no threat-intelligence enrichment; no verdict or severity scoring.
+* **Console output only.** No JSON or SIEM-formatted output yet.
+
+---
+
+## Privacy
+
+Email headers can expose personal addresses, internal hostnames, IP addresses, and Message-IDs. Samples in this repo use reserved example domains only. Redact real samples before publishing.
+
+---
+
+## Roadmap
+
+* Fix handling of messages without authentication headers
+* Relaxed (organizational-domain) alignment
+* Include compauth and DMARC alignment in findings
+* Use the existing `display_headers()` output (Received chain, DKIM-Signature) in the report
+* **Phase 3:** URL and IOC extraction
+* Threat-intelligence and domain reputation enrichment
+* Attachment metadata analysis
+* Severity scoring and JSON output
+* Automated tests with a sanitized sample set
 
 ## 🧰 Tools & Technologies
 
