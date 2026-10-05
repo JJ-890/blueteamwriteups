@@ -199,53 +199,7 @@ def correlate_dmarc_with_from(sender_information, dmarc_information):
 
     return from_domain == dmarc_domain
 
-def display_headers(message):
-    """Display headers relevant to an initial SOC investigation."""
 
-    print("\n========== EMAIL HEADER ANALYSIS ==========\n")
-
-    print(f"From:             {message.get('From', 'Not present')}")
-    print(f"Reply-To:         {message.get('Reply-To', 'Not present')}")
-    print(f"Return-Path:      {message.get('Return-Path', 'Not present')}")
-    print(f"Subject:          {message.get('Subject', 'Not present')}")
-    print(f"Date:             {message.get('Date', 'Not present')}")
-    print(f"Message-ID:       {message.get('Message-ID', 'Not present')}")
-
-    print("\nReceived:")
-    received_headers = message.get_all("Received", [])
-
-    if received_headers:
-        for number, received in enumerate(received_headers, start=1):
-            print(f"\n  [{number}] {received}")
-    else:
-        print("  Not present")
-
-    print("\nReceived-SPF:")
-    received_spf = message.get_all("Received-SPF", [])
-
-    if received_spf:
-        for result in received_spf:
-            print(f"  {result}")
-    else:
-        print("  Not present")
-
-    print("\nAuthentication-Results:")
-    auth_results = message.get_all("Authentication-Results", [])
-
-    if auth_results:
-        for result in auth_results:
-            print(f"\n  {result}")
-    else:
-        print("  Not present")
-
-    print("\nDKIM-Signature:")
-    dkim_signatures = message.get_all("DKIM-Signature", [])
-
-    if dkim_signatures:
-        for number, signature in enumerate(dkim_signatures, start=1):
-            print(f"\n  [{number}] {signature}")
-    else:
-        print("  Not present")
 def correlate_reply_to_with_from(sender_information):
     """Compare the Reply-To domain with the From domain."""
 
